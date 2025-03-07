@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoFlix</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <h1><a href="/">VideoFlix</a></h1>
+        </div>
+        <div class="navigation">
+            <ul>
+                <li><a href="/" class="active">Home</a></li>
+                <li><a href="#">TV Shows</a></li>
+                <li><a href="#">Movies</a></li>
+                <li><a href="#">My List</a></li>
+            </ul>
+        </div>
+        <div class="search">
+            <form action="/search" method="get">
+                <input type="text" name="q" placeholder="Search titles..." value="{{ search_query or '' }}">
+                <button type="submit" class="search-btn"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+    </header>
+
+    {% if featured_video %}
+    <section class="hero" style="background-image: url('{{ featured_video.image_url }}');">
+        <div class="hero-content">
+            <h2>{{ featured_video.title }}</h2>
+            <p>Watch the latest videos from our collection. Click to play!</p>
+            <div class="hero-buttons">
+                <a href="/watch/{{ videos.index(featured_video) }}" class="play-btn"><i class="fas fa-play"></i> Play</a>
+                <a href="/watch/{{ videos.index(featured_video) }}" class="info-btn"><i class="fas fa-info-circle"></i> More Info</a>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="videos-section">
+        <h3>Popular Videos</h3>
+        <div class="videos-grid">
+            {% for video in videos %}
+            <div class="video-card">
+                <a href="/watch/{{ loop.index0 }}">
+                    <img src="{{ video.image_url }}" alt="{{ video.title }}">
+                    <div class="video-title">{{ video.title }}</div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 VideoFlix. All rights reserved.</p>
+    </footer>
+</body>
+</html>
