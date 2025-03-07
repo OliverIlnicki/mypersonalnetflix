@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import random
+import os
 from urllib.parse import urlparse, parse_qs
 
 # Create FastAPI app
@@ -101,5 +102,8 @@ async def watch_video(request: Request, video_id: int):
         )
     return {"error": "Video not found"}
 
+# Use Heroku's assigned port
+port = int(os.environ.get("PORT", 8000))
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
