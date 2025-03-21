@@ -8,7 +8,8 @@ from pathlib import Path
 import argparse
 import pytube
 from pytube import YouTube
-from moviepy.editor import VideoFileClip
+
+from moviepy.video.io import VideoFileClip
 import logging
 import requests
 import pickle

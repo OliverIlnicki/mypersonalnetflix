@@ -1,0 +1,17 @@
+data/testdata/wester_haus.mov
+data/testdata/wuerfel.mp4
+data/testdata/sprachtest.wav
+data/testdata/single_dice_no_info.mp4
+data/testdata/corrupt_video.mp4
+__pycache__/videos2db.cpython-312.pyc
+data/testdata/50365-460279155.mp4:Zone.Identifier
+data/testdata/wester_haus - Kopie.mov:Zone.Identifier
+data/testdata/wester_haus - Kopie.txt:Zone.Identifier
+data/testdata/sprachtest - Kopie.txt:Zone.Identifier
+data/testdata/corrupt_video.mp4.bak
+data/testdata/corrupt_video.txt.bak
+data/testdata/wester_haus.txt.bak
+data/testdata/wuerfel - Kopie.mp4:Zone.Identifier
+data/testdata/wuerfel - Kopie.txt:Zone.Identifier
+data/testdata/wuerfel.txt.bak
+tests/test-local-source.py:Zone.Identifier
