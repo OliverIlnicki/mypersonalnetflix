@@ -47,11 +47,15 @@ def get_db_connection():
 
 # Helper function to extract YouTube video ID
 def extract_youtube_id(url):
+    if not url:
+        return None
     if 'youtu.be/' in url:
         return url.split('youtu.be/')[1].split('?')[0]
     elif 'youtube.com/watch' in url:
         parsed_url = urlparse(url)
-        return parse_qs(parsed_url.query)['v'][0]
+        query_params = parse_qs(parsed_url.query)
+        if 'v' in query_params:
+            return query_params['v'][0]
     return None
 
 # Load videos from the database
@@ -85,8 +89,19 @@ def load_videos(user=None, year=None, search_query=None):
             video['image_url'] = f"/data/{video['thumb_path']}"
         if video['vid_preview_path']:
             video['preview_url'] = f"/data/{video['vid_preview_path']}"
-        # Extract YouTube ID
-        video['youtube_id'] = extract_youtube_id(video['url'])
+        
+        # Extract YouTube ID if it's a YouTube URL
+        if video['url'] and ('youtube.com' in video['url'] or 'youtu.be' in video['url']):
+            video['youtube_id'] = extract_youtube_id(video['url'])
+        
+        # Set default preview_type if not in database
+        if 'preview_type' not in video or not video['preview_type']:
+            # Check the file extension to make a guess
+            if video['vid_preview_path'] and video['vid_preview_path'].lower().endswith('.mp4'):
+                video['preview_type'] = 'mp4'
+            else:
+                video['preview_type'] = 'gif'
+                
         videos.append(video)
     
     conn.close()
@@ -170,8 +185,18 @@ async def watch_video(request: Request, video_id: int):
             video['image_url'] = f"/data/{video['thumb_path']}"
         if video['vid_preview_path']:
             video['preview_url'] = f"/data/{video['vid_preview_path']}"
-        # Extract YouTube ID
-        video['youtube_id'] = extract_youtube_id(video['url'])
+            
+        # Extract YouTube ID if it's a YouTube URL
+        if video['url'] and ('youtube.com' in video['url'] or 'youtu.be' in video['url']):
+            video['youtube_id'] = extract_youtube_id(video['url'])
+            
+        # Set default preview_type if not in database
+        if 'preview_type' not in video or not video['preview_type']:
+            # Check the file extension to make a guess
+            if video['vid_preview_path'] and video['vid_preview_path'].lower().endswith('.mp4'):
+                video['preview_type'] = 'mp4'
+            else:
+                video['preview_type'] = 'gif'
         
         # Get related videos (simple implementation: same user or year)
         related_videos = load_videos(user=video['user'])[:5]  # Limit to 5 related videos
