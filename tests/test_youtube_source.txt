@@ -1,0 +1,226 @@
+import os
+import pytest
+import tempfile
+import sys
+from pathlib import Path
+from unittest.mock import patch, MagicMock
+
+# Add the src directory to the path
+sys.path.append(str(Path(__file__).parent.parent / "backend" / "src"))
+
+# Import the youtube_source module
+from youtube_source import YouTubeSource
+
+
+@pytest.fixture
+def youtube_source():
+    """Create a YouTubeSource instance for testing"""
+    return YouTubeSource()
+
+
+@pytest.fixture
+def temp_dir():
+    """Create a temporary directory for outputs"""
+    temp_dir = tempfile.mkdtemp()
+    yield temp_dir
+    # Clean up
+    import shutil
+    shutil.rmtree(temp_dir)
+
+
+@patch("youtube_source.check_youtube_video_accessible")
+def test_is_valid_url(mock_check_accessible, youtube_source):
+    """Test URL validation"""
+    # Set up the mock to return True
+    mock_check_accessible.return_value = (True, "Video is accessible")
+    
+    # Call the function with a valid URL
+    result = youtube_source.is_valid_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    
+    # Check the result
+    assert result is True
+    mock_check_accessible.assert_called_once_with("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    
+    # Reset the mock and set it to return False
+    mock_check_accessible.reset_mock()
+    mock_check_accessible.return_value = (False, "Video is unavailable")
+    
+    # Call the function with an invalid URL
+    result = youtube_source.is_valid_url("https://www.youtube.com/watch?v=invalid")
+    
+    # Check the result
+    assert result is False
+    mock_check_accessible.assert_called_once_with("https://www.youtube.com/watch?v=invalid")
+
+
+@patch("youtube_source.YouTube")
+@patch("youtube_source.YouTubeSource.download_thumbnail")
+def test_download_video(mock_download_thumbnail, mock_youtube, youtube_source, temp_dir):
+    """Test downloading a YouTube video"""
+    # Set up the YouTube mock
+    mock_yt = MagicMock()
+    mock_yt.title = "Test Video"
+    mock_yt.description = "This is a test video description"
+    mock_yt.publish_date.year = 2023
+    mock_youtube.return_value = mock_yt
+    
+    # Set up the stream mock
+    mock_stream = MagicMock()
+    mock_stream.download.return_value = os.path.join(temp_dir, "Test Video.mp4")
+    mock_yt.streams.filter.return_value.order_by.return_value.first.return_value = mock_stream
+    
+    # Set up the thumbnail mock
+    mock_download_thumbnail.return_value = os.path.join(temp_dir, "Test Video_thumbnail.jpg")
+    mock_yt.thumbnail_url = "https://example.com/thumbnail.jpg"
+    
+    # Call the function
+    video_path, thumbnail_path, title, description, upload_year = youtube_source.download_video(
+        "https://www.youtube.com/watch?v=dQw4w9WgXcQ", temp_dir
+    )
+    
+    # Check the results
+    assert video_path == os.path.join(temp_dir, "Test Video.mp4")
+    assert thumbnail_path == os.path.join(temp_dir, "Test Video_thumbnail.jpg")
+    assert title == "Test Video"
+    assert description == "This is a test video description"
+    assert upload_year == 2023
+    
+    # Check that the YouTube constructor was called
+    mock_youtube.assert_called_once_with("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    
+    # Check that the stream was filtered and downloaded
+    mock_yt.streams.filter.assert_called_once_with(progressive=True, file_extension='mp4')
+    mock_yt.streams.filter.return_value.order_by.assert_called_once_with('resolution')
+    mock_yt.streams.filter.return_value.order_by.return_value.first.assert_called_once()
+    mock_stream.download.assert_called_once_with(output_path=temp_dir, filename="Test Video.mp4")
+    
+    # Check that the thumbnail was downloaded
+    mock_download_thumbnail.assert_called_once_with(
+        "https://example.com/thumbnail.jpg", 
+        os.path.join(temp_dir, "Test Video_thumbnail.jpg")
+    )
+
+
+@patch("youtube_source.YouTube")
+def test_download_video_no_stream(mock_youtube, youtube_source, temp_dir):
+    """Test handling when no suitable stream is found"""
+    # Set up the YouTube mock
+    mock_yt = MagicMock()
+    mock_yt.title = "Test Video"
+    mock_youtube.return_value = mock_yt
+    
+    # Set up the stream filter to return None
+    mock_yt.streams.filter.return_value.order_by.return_value.first.return_value = None
+    
+    # Call the function
+    result = youtube_source.download_video("https://www.youtube.com/watch?v=dQw4w9WgXcQ", temp_dir)
+    
+    # Check the result
+    assert result == (None, None, None, None, None)
+    
+    # Check that the stream was filtered but no download was attempted
+    mock_yt.streams.filter.assert_called_once_with(progressive=True, file_extension='mp4')
+    mock_yt.streams.filter.return_value.order_by.assert_called_once_with('resolution')
+    mock_yt.streams.filter.return_value.order_by.return_value.first.assert_called_once()
+
+
+@patch("youtube_source.YouTube")
+def test_download_video_exception(mock_youtube, youtube_source, temp_dir):
+    """Test handling exceptions during video download"""
+    # Set up the YouTube mock to raise an exception
+    mock_youtube.side_effect = Exception("Network error")
+    
+    # Call the function
+    result = youtube_source.download_video("https://www.youtube.com/watch?v=dQw4w9WgXcQ", temp_dir)
+    
+    # Check the result
+    assert result == (None, None, None, None, None)
+    
+    # Check that the YouTube constructor was called
+    mock_youtube.assert_called_once_with("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+
+
+@patch("youtube_source.requests.get")
+def test_download_thumbnail_success(mock_requests_get, youtube_source, temp_dir):
+    """Test downloading a thumbnail successfully"""
+    # Set up the mock response
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.iter_content.return_value = [b"test data"]
+    mock_requests_get.return_value = mock_response
+    
+    # Set up the output path
+    thumbnail_path = os.path.join(temp_dir, "thumbnail.jpg")
+    
+    # Call the function
+    result = youtube_source.download_thumbnail("https://example.com/thumbnail.jpg", thumbnail_path)
+    
+    # Check the result
+    assert result == thumbnail_path
+    assert os.path.exists(thumbnail_path)
+    
+    # Check that requests.get was called
+    mock_requests_get.assert_called_once_with("https://example.com/thumbnail.jpg", stream=True)
+    
+    # Check that iter_content was called
+    mock_response.iter_content.assert_called_once_with(1024)
+    
+    # Clean up
+    os.remove(thumbnail_path)
+
+
+@patch("youtube_source.requests.get")
+def test_download_thumbnail_failure(mock_requests_get, youtube_source, temp_dir):
+    """Test handling failures when downloading a thumbnail"""
+    # Set up the mock response with a non-200 status code
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_requests_get.return_value = mock_response
+    
+    # Set up the output path
+    thumbnail_path = os.path.join(temp_dir, "thumbnail.jpg")
+    
+    # Call the function
+    result = youtube_source.download_thumbnail("https://example.com/thumbnail.jpg", thumbnail_path)
+    
+    # Check the result
+    assert result is None
+    assert not os.path.exists(thumbnail_path)
+    
+    # Check that requests.get was called
+    mock_requests_get.assert_called_once_with("https://example.com/thumbnail.jpg", stream=True)
+    
+    # Check that iter_content was not called
+    mock_response.iter_content.assert_not_called()
+
+
+def test_generate_content_hash(youtube_source, temp_dir):
+    """Test generating a content hash from a video file"""
+    # Create a test file
+    test_file_path = os.path.join(temp_dir, "test_video.mp4")
+    with open(test_file_path, 'wb') as f:
+        f.write(b"This is some test video content")
+    
+    # Call the function
+    hash_value = youtube_source.generate_content_hash(test_file_path)
+    
+    # Check the result
+    assert hash_value is not None
+    assert len(hash_value) == 32  # MD5 hash is 32 characters
+    
+    # Generate the hash again to ensure consistency
+    hash_value2 = youtube_source.generate_content_hash(test_file_path)
+    assert hash_value == hash_value2
+    
+    # Create a different file
+    diff_file_path = os.path.join(temp_dir, "different_video.mp4")
+    with open(diff_file_path, 'wb') as f:
+        f.write(b"This is different test video content")
+    
+    # Generate hash for the different file
+    diff_hash = youtube_source.generate_content_hash(diff_file_path)
+    assert diff_hash != hash_value
+    
+    # Clean up
+    os.remove(test_file_path)
+    os.remove(diff_file_path)

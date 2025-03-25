@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ video.title }} - OliFlix</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <style>
+        /* Logo styling */
+        .site-logo {
+            height: 40px;
+            width: auto;
+            vertical-align: middle;
+        }
+        
+        .video-description {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+        
+        .video-metadata {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            color: #aaa;
+        }
+        
+        .user-badge {
+            display: inline-block;
+            background-color: #e50914;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+        
+        .related-videos {
+            margin-top: 30px;
+        }
+        
+        .related-videos h3 {
+            margin-bottom: 15px;
+        }
+        
+        .related-videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .related-video-card {
+            transition: transform 0.3s;
+        }
+        
+        .related-video-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .related-video-card img {
+            width: 100%;
+            border-radius: 4px;
+        }
+        
+        .related-video-card h4 {
+            margin: 8px 0;
+            font-size: 0.9em;
+        }
+        
+        /* Change link color in related videos to white */
+        .related-videos a {
+            color: white;
+            text-decoration: none;
+        }
+        
+        .related-videos a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body class="watch-page">
+    <header>
+        <div class="logo">
+            <a href="/"><img src="/static/images/oliver_logo.png" alt="Oliver Ilnicki Logo" class="site-logo"></a>
+        </div>
+        <div class="navigation">
+            <ul>
+                <li><a href="/" class="active">Home</a></li>
+            </ul>
+        </div>
+        <div class="search">
+            <form action="/" method="get">
+                <input type="text" name="q" placeholder="Search titles...">
+                <button type="submit" class="search-btn"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+    </header>
+
+    <div class="watch-container">
+        <div class="video-player">
+            {% if video.youtube_id %}
+            <iframe 
+                src="https://www.youtube.com/embed/{{ video.youtube_id }}" 
+                frameborder="0" 
+                allowfullscreen
+            ></iframe>
+            {% else %}
+            <video controls>
+                <source src="{{ video.preview_url }}" type="video/{{ 'mp4' if video.preview_type == 'mp4' else 'gif' }}">
+                Your browser does not support the video tag.
+            </video>
+            {% endif %}
+        </div>
+        
+        <div class="video-details">
+            <h1>{{ video.title }}</h1>
+            
+            <div class="video-metadata">
+                <div>
+                    <span class="user-badge">{{ video.user }}</span>
+                    {% if video.upload_year %}
+                    <span>{{ video.upload_year }}</span>
+                    {% endif %}
+                </div>
+                
+                <div class="actions">
+                    <a href="/" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Browse</a>
+                </div>
+            </div>
+            
+            {% if video.description %}
+            <div class="video-description">
+                <h3>Description</h3>
+                {{ video.description }}
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if related_videos and related_videos|length > 0 %}
+        <div class="related-videos">
+            <h3>More from {{ video.user }}</h3>
+            <div class="related-videos-grid">
+                {% for related_video in related_videos %}
+                {% if related_video.id != video.id %}
+                <div class="related-video-card">
+                    <a href="/watch/{{ related_video.id }}">
+                        <img src="{{ related_video.image_url }}" alt="{{ related_video.title }}">
+                        <h4>{{ related_video.title }}</h4>
+                    </a>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer>
+        <p>&copy; 2025 OliFlix. All rights reserved.</p>
+    </footer>
+</body>
+</html>

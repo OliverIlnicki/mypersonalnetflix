@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OliFlix</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <style>
+        /* Logo styling */
+        .site-logo {
+            height: 40px;
+            width: auto;
+            vertical-align: middle;
+        }
+        
+        /* Preview hover effects */
+        .video-card {
+            position: relative;
+            transition: transform 0.3s;
+        }
+        
+        .video-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .thumbnail-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        
+        .video-thumbnail {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .video-preview {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.3s;
+            object-fit: cover;
+        }
+        
+        .thumbnail-container:hover .video-preview {
+            opacity: 1;
+        }
+        
+        .thumbnail-container:hover .video-thumbnail {
+            opacity: 0;
+        }
+        
+        .video-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            color: white;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        
+        /* Video title below preview - smaller text */
+        .video-title-below {
+            margin-top: 5px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #cccccc;
+            font-weight: normal;
+            line-height: 1.2;
+            display: block; /* Ensure it's displayed as a block element */
+        }
+
+        /* User filter styles */
+        .filters {
+            padding: 15px 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            margin-bottom: 15px;
+            border-radius: 8px;
+            display: none; /* Hide the original filters section */
+        }
+        
+        /* Header filter dropdown style */
+        .nav-filter {
+            position: relative;
+            margin-left: 15px;
+        }
+        
+        .nav-filter select {
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: none;
+            background-color: rgba(51, 51, 51, 0.7);
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        .user-badge {
+            display: inline-block;
+            background-color: #e50914;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+        
+        /* Hero section */
+        .hero {
+            height: 480px; /* Increased height */
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .hero-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7)); /* Less transparent */
+        }
+        
+        .hero-content h2 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        /* CSS-only hover effect for hero description */
+        .info-btn-container {
+            display: inline-block;
+            position: relative;
+        }
+        
+        .hero-description {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 300px; /* Fixed width for larger text box */
+            max-width: 80vw; /* Responsive for mobile */
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.9);
+            border-radius: 6px;
+            margin-top: 15px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            font-size: 1em;
+            line-height: 1.6;
+            color: #fff;
+            z-index: 10;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+        
+        .info-btn-container:hover .hero-description {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Fix position of buttons relative to description */
+        .hero-buttons {
+            position: relative;
+            z-index: 2;
+            display: flex;
+        }
+        
+        /* Space between title and user/year info */
+        .video-meta-info {
+            margin-top: 2px;
+            font-size: 0.75rem;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .hero {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <a href="/"><img src="/static/images/oliver_logo.png" alt="Oliver Ilnicki Logo" class="site-logo"></a>
+        </div>
+        <div class="navigation">
+            <ul>
+                <li><a href="/" class="active">Home</a></li>
+            </ul>
+        </div>
+        <div class="search">
+            <form action="/" method="get">
+                <input type="text" name="q" placeholder="Search titles..." value="{{ search_query or '' }}">
+                {% if current_user %}
+                <input type="hidden" name="user" value="{{ current_user }}">
+                {% endif %}
+                {% if current_year %}
+                <input type="hidden" name="year" value="{{ current_year }}">
+                {% endif %}
+                <button type="submit" class="search-btn"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
+    </header>
+
+    {% if featured_video %}
+    <section class="hero" style="background-image: url('{{ featured_video.image_url }}');">
+        <div class="hero-content">
+            <h2>{{ featured_video.title }}</h2>
+            <p>Watch the latest videos from our collection. Click to play!</p>
+            <div class="hero-buttons">
+                <a href="/watch/{{ featured_video.id }}" class="play-btn"><i class="fas fa-play"></i> Play</a>
+                <div class="info-btn-container">
+                    <a href="/watch/{{ featured_video.id }}" class="info-btn"><i class="fas fa-info-circle"></i> More Info</a>
+                    <div class="hero-description">
+                        {{ featured_video.description|truncate(300) }}
+                        {% if featured_video.description|length > 300 %}
+                        <a href="/watch/{{ featured_video.id }}" style="color: #fff; text-decoration: underline;">Read more</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="videos-section">
+        <h3>
+            {% if current_user %}
+            Videos by <span class="user-badge">{{ current_user }}</span>
+            {% else %}
+            Popular Videos
+            {% endif %}
+            
+            {% if current_year %}
+            from {{ current_year }}
+            {% endif %}
+            
+            {% if search_query %}
+            matching "{{ search_query }}"
+            {% endif %}
+            
+            {% if videos|length == 0 %}
+            <p>No videos found matching your criteria.</p>
+            {% endif %}
+        </h3>
+        
+        <div class="videos-grid">
+            {% for video in videos %}
+            <div class="video-card">
+                <a href="/watch/{{ video.id }}">
+                    <div class="thumbnail-container">
+                        <img class="video-thumbnail" src="{{ video.image_url }}" alt="{{ video.title }}">
+                        
+                        {% if video.preview_type == 'mp4' %}
+                            <video class="video-preview" muted loop preload="none" playsinline>
+                                <source src="{{ video.preview_url }}" type="video/mp4">
+                            </video>
+                        {% else %}
+                            <img class="video-preview" src="{{ video.preview_url }}" alt="Preview">
+                        {% endif %}
+                        
+                        <div class="video-title">{{ video.title }}</div>
+                    </div>
+                </a>
+                <!-- Title as a separate HTML element outside of any styling classes -->
+                <div style="display: block !important; font-size: 11px !important; color: #cccccc !important; margin-top: 5px !important; padding-bottom: 5px !important; visibility: visible !important; position: relative !important; z-index: 10 !important;">{{ video.title }}</div>
+                <p class="video-meta-info">
+                    {% if not current_user %}
+                    <span class="user-badge">{{ video.user }}</span>
+                    {% endif %}
+                    {% if video.upload_year %}
+                    ({{ video.upload_year }})
+                    {% endif %}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="bottom-filters">
+        <form action="/" method="get" id="bottom-filter-form">
+            <select name="user" id="user-filter" onchange="this.form.submit()">
+                <option value="">All Users</option>
+                {% for user_name in users %}
+                <option value="{{ user_name }}" {% if current_user == user_name %}selected{% endif %}>{{ user_name }}</option>
+                {% endfor %}
+            </select>
+            
+            <select name="year" id="year-filter" onchange="this.form.submit()">
+                <option value="">All Years</option>
+                {% for year_val in years %}
+                <option value="{{ year_val }}" {% if current_year == year_val|int %}selected{% endif %}>{{ year_val }}</option>
+                {% endfor %}
+            </select>
+            
+            {% if search_query %}
+            <input type="hidden" name="q" value="{{ search_query }}">
+            {% endif %}
+            
+            {% if current_user or current_year or search_query %}
+            <a href="/" class="clear-filters">Clear Filters</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 OliFlix. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Play videos when hovering over the thumbnail container
+        document.addEventListener('DOMContentLoaded', function() {
+            const thumbnailContainers = document.querySelectorAll('.thumbnail-container');
+            
+            thumbnailContainers.forEach(container => {
+                const video = container.querySelector('video');
+                
+                if (video) {
+                    container.addEventListener('mouseenter', () => {
+                        video.play();
+                    });
+                    
+                    container.addEventListener('mouseleave', () => {
+                        video.pause();
+                        video.currentTime = 0;
+                    });
+                }
+            });
+            
+            // Fix for the year filter issue - prevent empty string being sent as year
+            const bottomFilterForm = document.getElementById('bottom-filter-form');
+            if (bottomFilterForm) {
+                bottomFilterForm.addEventListener('submit', function(e) {
+                    const yearSelect = document.getElementById('year-filter');
+                    if (yearSelect.value === '') {
+                        yearSelect.disabled = true;
+                    }
+                    
+                    const userSelect = document.getElementById('user-filter');
+                    if (userSelect.value === '') {
+                        userSelect.disabled = true;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

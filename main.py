@@ -1,252 +1,211 @@
-#%%
-from fastapi import FastAPI, Request, Form, Query
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
-import uvicorn
-import random
+"""
+Video Preview Application - Main Launcher
+=========================================
+
+Overview:
+---------
+This script serves as the primary entry point for the Video Preview Application.
+It handles the initialization and launching of both frontend and backend servers,
+with configuration management and command-line options for flexibility.
+
+The application allows for processing and viewing video previews, supporting both
+local videos and YouTube sources, generating thumbnails and preview clips.
+
+Features:
+---------
+* Configurable through both config.json and command-line arguments
+* Support for environment variable overrides
+* Flexible deployment options (run both servers, backend-only, or frontend-only)
+* Thread-based concurrent server execution
+
+Usage Examples:
+--------------
+# Run both frontend and backend with default settings
+python main.py
+
+# Run only the backend server on port 9000
+python main.py --backend-only --backend-port 9000
+
+# Run only the frontend, connecting to a remote API
+python main.py --frontend-only --api-url https://remote-api.example.com
+
+Configuration Hierarchy:
+----------------------
+1. Default values (defined in load_config)
+2. Values from config.json
+3. Command-line arguments
+4. Environment variables (highest priority)
+"""
 import os
+import sys
+import argparse
+import subprocess
+import time
 import json
-import sqlite3
-from pathlib import Path
-from urllib.parse import urlparse, parse_qs
+from threading import Thread
 
-#%%
-# Create FastAPI app
-app = FastAPI(title="Video Preview App")
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Data directory (where youtube-preview-gif-creator.py saves its output)
-DATA_DIR = os.environ.get("DATA_DIR", "./data")
-
-# Mount static files directory for our app assets
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Mount the data directory for previews and thumbnails
-app.mount("/data", StaticFiles(directory=DATA_DIR), name="data")
-
-# Setup templates
-templates = Jinja2Templates(directory="templates")
-
-# Helper function to connect to SQLite database
-def get_db_connection():
-    db_path = os.path.join(DATA_DIR, "videos.db")
-    if not os.path.exists(db_path):
-        raise FileNotFoundError(f"Database not found at {db_path}. Run youtube-preview-gif-creator.py first.")
-    return sqlite3.connect(db_path)
-
-# Helper function to extract YouTube video ID
-def extract_youtube_id(url):
-    if not url:
-        return None
-    if 'youtu.be/' in url:
-        return url.split('youtu.be/')[1].split('?')[0]
-    elif 'youtube.com/watch' in url:
-        parsed_url = urlparse(url)
-        query_params = parse_qs(parsed_url.query)
-        if 'v' in query_params:
-            return query_params['v'][0]
-    return None
-
-# Load videos from the database
-def load_videos(user=None, year=None, search_query=None):
-    conn = get_db_connection()
-    cursor = conn.cursor()
+def load_config():
+    """
+    Load application configuration from config.json file.
     
-    query = "SELECT * FROM videos WHERE 1=1"
-    params = []
+    This function tries to read configuration from a config.json file in the same
+    directory as this script. If the file doesn't exist, it creates one with default 
+    values. If there's an error reading the file, it falls back to defaults.
     
-    if user:
-        query += " AND user = ?"
-        params.append(user)
+    Returns:
+        dict: Configuration dictionary with the following keys:
+            - backend_port: Port number for the backend API server
+            - frontend_port: Port number for the frontend web server
+            - data_dir: Directory path for storing/accessing video data
+            - api_url: URL for the backend API (optional, defaults to None)
+    """
+    # Default configuration values
+    default_config = {
+        "backend_port": 8000,
+        "frontend_port": 8001,
+        "data_dir": "./data",
+        "api_url": None
+    }
     
-    if year:
-        query += " AND upload_year = ?"
-        params.append(year)
-        
-    if search_query:
-        query += " AND (title LIKE ? OR description LIKE ?)"
-        params.extend([f"%{search_query}%", f"%{search_query}%"])
+    # Determine the absolute path to the config file
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
     
-    cursor.execute(query, params)
-    columns = [description[0] for description in cursor.description]
-    videos = []
-    
-    for row in cursor.fetchall():
-        video = dict(zip(columns, row))
-        # Add the full path for thumbnail and preview
-        if video['thumb_path']:
-            video['image_url'] = f"/data/{video['thumb_path']}"
-        if video['vid_preview_path']:
-            video['preview_url'] = f"/data/{video['vid_preview_path']}"
-        
-        # Extract YouTube ID if it's a YouTube URL
-        if video['url'] and ('youtube.com' in video['url'] or 'youtu.be' in video['url']):
-            video['youtube_id'] = extract_youtube_id(video['url'])
-        
-        # Set default preview_type if not in database
-        if 'preview_type' not in video or not video['preview_type']:
-            # Check the file extension to make a guess
-            if video['vid_preview_path'] and video['vid_preview_path'].lower().endswith('.mp4'):
-                video['preview_type'] = 'mp4'
-            else:
-                video['preview_type'] = 'gif'
-                
-        videos.append(video)
-    
-    conn.close()
-    return videos
-
-# Get list of available users
-def get_users():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT user FROM videos WHERE user != ''")
-    users = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return users
-
-# Get list of available years
-def get_years():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT upload_year FROM videos WHERE upload_year IS NOT NULL")
-    years = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return sorted(years)
-
-# Routes
-@app.get("/")
-async def home(
-    request: Request, 
-    user: Optional[str] = None,
-    year: Optional[int] = None,
-    q: Optional[str] = None
-):
+    # Try to load from config file
     try:
-        # Load videos with optional filters
-        videos = load_videos(user, year, q)
-        
-        # Get available filters
-        users = get_users()
-        years = get_years()
-        
-        # Select a random featured video
-        featured_video = random.choice(videos) if videos else None
-        
-        return templates.TemplateResponse(
-            "index.html", 
-            {
-                "request": request, 
-                "videos": videos,
-                "featured_video": featured_video,
-                "users": users,
-                "years": years,
-                "current_user": user,
-                "current_year": year,
-                "search_query": q
-            }
-        )
-    except FileNotFoundError as e:
-        return templates.TemplateResponse(
-            "error.html",
-            {
-                "request": request,
-                "error_message": str(e)
-            }
-        )
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        else:
+            # Create default config file if it doesn't exist
+            with open(config_path, 'w') as f:
+                json.dump(default_config, f, indent=4)
+            print(f"Created new config file at {config_path} with default values")
+    except Exception as e:
+        print(f"Warning: Error with config file: {e}. Using defaults.")
+    
+    return default_config
 
-@app.get("/watch/{video_id}")
-async def watch_video(request: Request, video_id: int):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM videos WHERE id = ?", (video_id,))
-        columns = [description[0] for description in cursor.description]
-        row = cursor.fetchone()
-        conn.close()
-        
-        if not row:
-            return {"error": "Video not found"}
-            
-        video = dict(zip(columns, row))
-        # Add the full path for thumbnail and preview
-        if video['thumb_path']:
-            video['image_url'] = f"/data/{video['thumb_path']}"
-        if video['vid_preview_path']:
-            video['preview_url'] = f"/data/{video['vid_preview_path']}"
-            
-        # Extract YouTube ID if it's a YouTube URL
-        if video['url'] and ('youtube.com' in video['url'] or 'youtu.be' in video['url']):
-            video['youtube_id'] = extract_youtube_id(video['url'])
-            
-        # Set default preview_type if not in database
-        if 'preview_type' not in video or not video['preview_type']:
-            # Check the file extension to make a guess
-            if video['vid_preview_path'] and video['vid_preview_path'].lower().endswith('.mp4'):
-                video['preview_type'] = 'mp4'
-            else:
-                video['preview_type'] = 'gif'
-        
-        # Get related videos (simple implementation: same user or year)
-        related_videos = load_videos(user=video['user'])[:5]  # Limit to 5 related videos
-        
-        return templates.TemplateResponse(
-            "watch.html", 
-            {
-                "request": request, 
-                "video": video,
-                "related_videos": related_videos
-            }
-        )
-    except FileNotFoundError as e:
-        return templates.TemplateResponse(
-            "error.html",
-            {
-                "request": request,
-                "error_message": str(e)
-            }
-        )
 
-# API endpoints for programmatic access
-@app.get("/api/videos")
-async def api_videos(
-    user: Optional[str] = None,
-    year: Optional[int] = None,
-    q: Optional[str] = None
-):
-    try:
-        videos = load_videos(user, year, q)
-        return {"videos": videos, "count": len(videos)}
-    except FileNotFoundError as e:
-        return {"error": str(e)}
+def run_backend(port):
+    """
+    Launch the backend API server.
+    
+    This function starts the backend API server that handles video processing,
+    database operations, and serving video preview data.
+    
+    Args:
+        port (int): The port number on which the backend API will listen
+    """
+    print(f"Starting backend API on port {port}...")
+    os.environ["PORT"] = str(port)
+    # Use the correct path to backend_api.py in the backend directory
+    backend_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                "backend", "backend_api.py")
+    subprocess.run([sys.executable, backend_path])
 
-@app.get("/api/users")
-async def api_users():
-    try:
-        return {"users": get_users()}
-    except FileNotFoundError as e:
-        return {"error": str(e)}
 
-@app.get("/api/years")
-async def api_years():
-    try:
-        return {"years": get_years()}
-    except FileNotFoundError as e:
-        return {"error": str(e)}
+def run_frontend(port, api_url):
+    """
+    Launch the frontend web server.
+    
+    This function starts the frontend web server that provides the user interface
+    for browsing and viewing video previews. It connects to the backend API.
+    
+    Args:
+        port (int): The port number on which the frontend server will listen
+        api_url (str): The URL where the backend API can be reached
+    """
+    print(f"Starting frontend on port {port} (connecting to API at {api_url})...")
+    os.environ["PORT"] = str(port)
+    os.environ["API_URL"] = api_url
+    # Use the correct path to frontend_app.py in the frontend directory
+    frontend_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                                "frontend", "frontend_app.py")
+    subprocess.run([sys.executable, frontend_path])
 
-# Use Heroku's assigned port or default to 8000
-port = int(os.environ.get("PORT", 8000))
+
+def main():
+    """
+    Main application entry point.
+    
+    This function handles command-line argument parsing, configuration loading,
+    and launches the appropriate server components based on the specified options.
+    
+    The function supports three modes of operation:
+    1. Run both backend and frontend servers (default)
+    2. Run only the backend server (--backend-only)
+    3. Run only the frontend server (--frontend-only)
+    
+    Configuration values are loaded with the following priority:
+    1. Default values
+    2. Values from config.json
+    3. Command-line arguments
+    4. Environment variables (highest priority)
+    """
+    # Load config first
+    config = load_config()
+    
+    # Define command-line arguments with defaults from config
+    parser = argparse.ArgumentParser(description="Video Preview Application")
+    parser.add_argument("--backend-port", type=int, default=config.get("backend_port"), 
+                       help=f"Port for the backend API server (default: {config.get('backend_port')})")
+    parser.add_argument("--frontend-port", type=int, default=config.get("frontend_port"), 
+                       help=f"Port for the frontend server (default: {config.get('frontend_port')})")
+    parser.add_argument("--data-dir", type=str, default=config.get("data_dir"), 
+                       help=f"Directory containing video data (default: {config.get('data_dir')})")
+    parser.add_argument("--backend-only", action="store_true", 
+                       help="Run only the backend server")
+    parser.add_argument("--frontend-only", action="store_true", 
+                       help="Run only the frontend server")
+    parser.add_argument("--api-url", type=str, default=config.get("api_url"), 
+                       help="URL for the backend API (for frontend-only mode)")
+    
+    args = parser.parse_args()
+    
+    # Override config with environment variables (highest priority)
+    if "BACKEND_PORT" in os.environ:
+        args.backend_port = int(os.environ["BACKEND_PORT"])
+    if "FRONTEND_PORT" in os.environ:
+        args.frontend_port = int(os.environ["FRONTEND_PORT"])
+    if "DATA_DIR" in os.environ:
+        args.data_dir = os.environ["DATA_DIR"]
+    if "API_URL" in os.environ:
+        args.api_url = os.environ["API_URL"]
+    
+    # Convert relative data directory to absolute path
+    if not os.path.isabs(args.data_dir):
+        args.data_dir = os.path.abspath(args.data_dir)
+    
+    # Set data directory as environment variable for child processes
+    os.environ["DATA_DIR"] = args.data_dir
+    
+    # Backend-only mode
+    if args.backend_only:
+        run_backend(args.backend_port)
+        return
+    
+    # Frontend-only mode
+    if args.frontend_only:
+        api_url = args.api_url or f"http://localhost:{args.backend_port}"
+        run_frontend(args.frontend_port, api_url)
+        return
+    
+    # Run both (default mode)
+    api_url = args.api_url or f"http://localhost:{args.backend_port}"
+    
+    # Start backend in a separate thread
+    backend_thread = Thread(target=run_backend, args=(args.backend_port,))
+    backend_thread.daemon = True
+    backend_thread.start()
+    
+    # Give the backend a moment to start up
+    print("Waiting for backend to start...")
+    time.sleep(2)
+    
+    # Run frontend (blocking call in the main thread)
+    run_frontend(args.frontend_port, api_url)
+
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
+    main()

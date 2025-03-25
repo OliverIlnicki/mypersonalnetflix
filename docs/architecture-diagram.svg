@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <!-- Background -->
+  <rect width="800" height="500" fill="#f8f9fa" rx="5" ry="5"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle" fill="#333">Video Preview Application Architecture</text>
+  
+  <!-- Frontend Tier Box -->
+  <rect x="80" y="80" width="640" height="80" fill="#6c8ebf" rx="5" ry="5" opacity="0.8"/>
+  <text x="400" y="120" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle" fill="white">Frontend Tier (User Interface)</text>
+  <text x="400" y="145" font-family="Arial" font-size="14" text-anchor="middle" fill="white">FastAPI with Jinja2 Templates</text>
+
+  <!-- Backend Tier Box -->
+  <rect x="80" y="180" width="640" height="80" fill="#d79b00" rx="5" ry="5" opacity="0.8"/>
+  <text x="400" y="220" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle" fill="white">Backend Tier (API)</text>
+  <text x="400" y="245" font-family="Arial" font-size="14" text-anchor="middle" fill="white">FastAPI REST Endpoints</text>
+
+  <!-- Processing System Box -->
+  <rect x="80" y="280" width="640" height="80" fill="#9673a6" rx="5" ry="5" opacity="0.8"/>
+  <text x="400" y="320" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle" fill="white">Video Processing System</text>
+  <text x="400" y="345" font-family="Arial" font-size="14" text-anchor="middle" fill="white">VideoProcessor, Preview Generation, Metadata Extraction</text>
+
+  <!-- Source Adapters Box -->
+  <rect x="80" y="380" width="315" height="80" fill="#82b366" rx="5" ry="5" opacity="0.8"/>
+  <text x="237.5" y="420" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle" fill="white">Source Adapters</text>
+  <text x="237.5" y="445" font-family="Arial" font-size="14" text-anchor="middle" fill="white">YouTube, Local Files</text>
+
+  <!-- Database Box -->
+  <rect x="405" y="380" width="315" height="80" fill="#d5e8d4" rx="5" ry="5" opacity="0.8"/>
+  <text x="562.5" y="420" font-family="Arial" font-size="18" font-weight="bold" text-anchor="middle" fill="#333">Data Storage</text>
+  <text x="562.5" y="445" font-family="Arial" font-size="14" text-anchor="middle" fill="#333">SQLite DB + File System</text>
+
+  <!-- Connection Lines -->
+  <!-- Frontend to Backend -->
+  <line x1="400" y1="160" x2="400" y2="180" stroke="#333" stroke-width="2"/>
+  <text x="415" y="173" font-family="Arial" font-size="12" fill="#333">HTTP</text>
+
+  <!-- Backend to Processing -->
+  <line x1="400" y1="260" x2="400" y2="280" stroke="#333" stroke-width="2"/>
+  <text x="415" y="273" font-family="Arial" font-size="12" fill="#333">Function Calls</text>
+
+  <!-- Processing to Source Adapters -->
+  <line x1="237.5" y1="360" x2="237.5" y2="380" stroke="#333" stroke-width="2"/>
+  <text x="252.5" y="373" font-family="Arial" font-size="12" fill="#333">Plugin System</text>
+
+  <!-- Processing to Database -->
+  <line x1="562.5" y1="360" x2="562.5" y2="380" stroke="#333" stroke-width="2"/>
+  <text x="577.5" y="373" font-family="Arial" font-size="12" fill="#333">Data Access</text>
+
+  <!-- Component Icons -->
+  <!-- Frontend Icon -->
+  <rect x="120" y="100" width="40" height="40" fill="#f8f9fa" rx="5" ry="5"/>
+  <text x="140" y="127" font-family="Arial" font-size="24" text-anchor="middle" fill="#6c8ebf">🖥️</text>
+
+  <!-- Backend Icon -->
+  <rect x="120" y="200" width="40" height="40" fill="#f8f9fa" rx="5" ry="5"/>
+  <text x="140" y="227" font-family="Arial" font-size="24" text-anchor="middle" fill="#d79b00">🔌</text>
+
+  <!-- Processing Icon -->
+  <rect x="120" y="300" width="40" height="40" fill="#f8f9fa" rx="5" ry="5"/>
+  <text x="140" y="327" font-family="Arial" font-size="24" text-anchor="middle" fill="#9673a6">⚙️</text>
+
+  <!-- Source Adapters Icon -->
+  <rect x="120" y="400" width="40" height="40" fill="#f8f9fa" rx="5" ry="5"/>
+  <text x="140" y="427" font-family="Arial" font-size="24" text-anchor="middle" fill="#82b366">🎬</text>
+
+  <!-- Database Icon -->
+  <rect x="445" y="400" width="40" height="40" fill="#f8f9fa" rx="5" ry="5"/>
+  <text x="465" y="427" font-family="Arial" font-size="24" text-anchor="middle" fill="#333">💾</text>
+</svg>
