@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" text-anchor="middle" font-size="20" font-weight="bold">Video Preview Application Data Flow</text>
+  
+  <!-- Video Addition Flow -->
+  <rect x="50" y="80" width="700" height="160" fill="#e6f2ff" stroke="#3498db" stroke-dasharray="5,5"/>
+  <text x="400" y="110" text-anchor="middle" font-size="16" font-weight="bold">1. Video Addition Flow</text>
+  
+  <!-- Video Sources -->
+  <g>
+    <rect x="100" y="140" width="100" height="80" fill="#ffffff" stroke="#2ecc71"/>
+    <text x="150" y="165" text-anchor="middle" font-size="11">Video Source</text>
+    <text x="150" y="180" text-anchor="middle" font-size="10">(YouTube/Local)</text>
+  </g>
+  
+  <!-- Arrows for Video Addition -->
+  <path d="M200,180 L250,180" fill="none" stroke="#34495e" marker-end="url(#arrowhead)"/>
+  
+  <!-- Video Processor -->
+  <g>
+    <rect x="250" y="140" width="150" height="80" fill="#ffffff" stroke="#3498db"/>
+    <text x="325" y="165" text-anchor="middle" font-size="11">Video Processor</text>
+    <text x="325" y="180" text-anchor="middle" font-size="10">(Metadata</text>
+    <text x="325" y="190" text-anchor="middle" font-size="10">Extraction)</text>
+  </g>
+  
+  <!-- Arrows between Processor components -->
+  <path d="M400,180 L450,180" fill="none" stroke="#34495e" marker-end="url(#arrowhead)"/>
+  
+  <!-- Database -->
+  <g>
+    <rect x="450" y="140" width="100" height="80" fill="#ffffff" stroke="#9b59b6"/>
+    <text x="500" y="165" text-anchor="middle" font-size="11">Database</text>
+    <text x="500" y="180" text-anchor="middle" font-size="10">(Store</text>
+    <text x="500" y="190" text-anchor="middle" font-size="10">Metadata)</text>
+  </g>
+  
+  <!-- File System -->
+  <g>
+    <rect x="600" y="140" width="120" height="80" fill="#ffffff" stroke="#e74c3c"/>
+    <text x="660" y="165" text-anchor="middle" font-size="11">File System</text>
+    <text x="660" y="180" text-anchor="middle" font-size="10">(Previews/</text>
+    <text x="660" y="190" text-anchor="middle" font-size="10">Thumbnails)</text>
+  </g>
+  
+  <!-- Video Browsing Flow -->
+  <rect x="50" y="280" width="700" height="160" fill="#e6f3e6" stroke="#2ecc71" stroke-dasharray="5,5"/>
+  <text x="400" y="310" text-anchor="middle" font-size="16" font-weight="bold">2. Video Browsing Flow</text>
+  
+  <!-- Frontend -->
+  <g>
+    <rect x="100" y="340" width="150" height="80" fill="#ffffff" stroke="#3498db"/>
+    <text x="175" y="365" text-anchor="middle" font-size="11">Frontend</text>
+    <text x="175" y="380" text-anchor="middle" font-size="10">(Request</text>
+    <text x="175" y="390" text-anchor="middle" font-size="10">Video List)</text>
+  </g>
+  
+  <!-- Arrow to Backend -->
+  <path d="M250,380 L300,380" fill="none" stroke="#34495e" marker-end="url(#arrowhead)"/>
+  
+  <!-- Backend -->
+  <g>
+    <rect x="300" y="340" width="150" height="80" fill="#ffffff" stroke="#9b59b6"/>
+    <text x="375" y="365" text-anchor="middle" font-size="11">Backend API</text>
+    <text x="375" y="380" text-anchor="middle" font-size="10">(Query</text>
+    <text x="375" y="390" text-anchor="middle" font-size="10">Database)</text>
+  </g>
+  
+  <!-- Arrow to Database -->
+  <path d="M450,380 L500,380" fill="none" stroke="#34495e" marker-end="url(#arrowhead)"/>
+  
+  <!-- Database for Browsing -->
+  <g>
+    <rect x="500" y="340" width="150" height="80" fill="#ffffff" stroke="#e74c3c"/>
+    <text x="575" y="365" text-anchor="middle" font-size="11">Database</text>
+    <text x="575" y="380" text-anchor="middle" font-size="10">(Return</text>
+    <text x="575" y="390" text-anchor="middle" font-size="10">Metadata)</text>
+  </g>
+  
+  <!-- Video Preview Flow -->
+  <rect x="50" y="480" width="700" height="100" fill="#fff2e6" stroke="#e67e22" stroke-dasharray="5,5"/>
+  <text x="400" y="510" text-anchor="middle" font-size="16" font-weight="bold">3. Video Preview Flow</text>
+  
+  <!-- Frontend Preview -->
+  <g>
+    <rect x="200" y="540" width="150" height="40" fill="#ffffff" stroke="#3498db"/>
+    <text x="275" y="560" text-anchor="middle" font-size="12">Frontend</text>
+  </g>
+  
+  <!-- Backend Preview -->
+  <g>
+    <rect x="450" y="540" width="150" height="40" fill="#ffffff" stroke="#9b59b6"/>
+    <text x="525" y="560" text-anchor="middle" font-size="12">Backend API</text>
+  </g>
+  
+  <!-- Bidirectional Arrows -->
+  <path d="M350,560 L450,560" fill="none" stroke="#34495e" marker-end="url(#arrowhead)" marker-start="url(#arrowhead)"/>
+  
+  <!-- Arrowhead marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+    refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#34495e"/>
+    </marker>
+  </defs>
+</svg>

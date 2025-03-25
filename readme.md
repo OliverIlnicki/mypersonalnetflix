@@ -76,7 +76,7 @@ The Video Preview Application is designed as a modular, two-tier system comprise
 - JSON export for backup and portability
 
 ### Data Flow
-
+![Data Flow](docs/video-flow-diagram.svg)
 1. **Video Addition Flow**:
    - Video source is identified and processed
    - Metadata is extracted and stored in database
