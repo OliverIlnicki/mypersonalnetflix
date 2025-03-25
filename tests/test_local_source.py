@@ -5,12 +5,31 @@ import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 import shutil
+from backend.src.local_source import LocalFileSource
 
-# Add the src directory to the path
-sys.path.append(str(Path(__file__).parent.parent / "backend" / "src"))
+# Fix module imports by adjusting path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
 
-# Import the local_source module
-from local_source import LocalFileSource
+# Setup mocks for imports
+class MockVideoSource:
+    @staticmethod
+    def download_thumbnail(url, output_path):
+        return output_path
+            
+    @staticmethod
+    def generate_content_hash(video_path):
+        return "test_hash"
+
+# Create mock modules before importing
+with patch.dict(sys.modules, {
+    'backend.src.base_source': MagicMock(),
+    'moviepy.video.io.VideoFileClip': MagicMock(),
+    'backend.src.base_source.VideoSource': MockVideoSource
+}):
+    sys.modules['backend.src.base_source'].VideoSource = MockVideoSource
+    from backend.src.local_source import LocalFileSource
 
 
 @pytest.fixture
@@ -80,44 +99,45 @@ def test_is_valid_url_invalid_files(local_source, temp_dir):
     assert local_source.is_valid_url(text_file) is False
 
 
-@patch("local_source.VideoFileClip")
-def test_download_video_basic(mock_video_file_clip, local_source, sample_video_file, temp_dir):
+@patch("backend.src.local_source.VideoSource", autospec=True)
+def test_download_video_basic(mock_video_source, local_source, sample_video_file, temp_dir):
     """Test basic processing of a local video file"""
     # Mock VideoFileClip
-    mock_clip = MagicMock()
-    mock_clip.duration = 60.0
-    mock_video_file_clip.return_value = mock_clip
-    
-    # Create output directory
-    output_dir = os.path.join(temp_dir, "output")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Call the function
-    video_path, thumbnail_path, title, description, upload_year = local_source.download_video(
-        sample_video_file, output_dir
-    )
-    
-    # Check the results
-    assert video_path is not None
-    assert os.path.exists(video_path)
-    assert "test_video.mp4" in video_path
-    
-    # Check that the title was derived from the filename
-    assert title == "test_video"
-    
-    # Check that a thumbnail was created
-    assert thumbnail_path is not None
-    assert os.path.exists(thumbnail_path)
-    
-    # Check that the clip was accessed
-    mock_video_file_clip.assert_called_once_with(sample_video_file)
-    
-    # Check that save_frame was called
-    mock_clip.save_frame.assert_called_once()
-    mock_clip.close.assert_called_once()
+    with patch("backend.src.local_source.VideoFileClip") as mock_video_file_clip:
+        mock_clip = MagicMock()
+        mock_clip.duration = 60.0
+        mock_video_file_clip.return_value = mock_clip
+        
+        # Create output directory
+        output_dir = os.path.join(temp_dir, "output")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Call the function
+        video_path, thumbnail_path, title, description, upload_year = local_source.download_video(
+            sample_video_file, output_dir
+        )
+        
+        # Check the results
+        assert video_path is not None
+        assert os.path.exists(video_path)
+        assert "test_video.mp4" in video_path
+        
+        # Check that the title was derived from the filename
+        assert title == "test_video"
+        
+        # Check that a thumbnail was created
+        assert thumbnail_path is not None
+        assert os.path.exists(thumbnail_path)
+        
+        # Check that the clip was accessed
+        mock_video_file_clip.assert_called_once_with(sample_video_file)
+        
+        # Check that save_frame was called
+        mock_clip.save_frame.assert_called_once()
+        mock_clip.close.assert_called_once()
 
 
-@patch("local_source.VideoFileClip")
+@patch("backend.src.local_source.VideoFileClip")
 def test_download_video_with_description(mock_video_file_clip, local_source, sample_video_with_description, temp_dir):
     """Test processing a video with an accompanying description file"""
     # Mock VideoFileClip
@@ -149,7 +169,7 @@ def test_download_video_with_description(mock_video_file_clip, local_source, sam
     assert os.path.exists(thumbnail_path)
 
 
-@patch("local_source.VideoFileClip")
+@patch("backend.src.local_source.VideoFileClip")
 def test_download_video_non_existent(mock_video_file_clip, local_source, temp_dir):
     """Test handling a non-existent video file"""
     # Create a path to a non-existent video
@@ -165,7 +185,7 @@ def test_download_video_non_existent(mock_video_file_clip, local_source, temp_di
     mock_video_file_clip.assert_not_called()
 
 
-@patch("local_source.VideoFileClip")
+@patch("backend.src.local_source.VideoFileClip")
 def test_download_video_thumbnail_error(mock_video_file_clip, local_source, sample_video_file, temp_dir):
     """Test handling errors during thumbnail creation"""
     # Mock VideoFileClip to raise an exception during save_frame
@@ -201,7 +221,7 @@ def test_download_video_symlink_if_available(local_source, sample_video_file, te
     
     # Only run the symlink test if the platform supports it
     if hasattr(os, 'symlink'):
-        with patch("local_source.VideoFileClip") as mock_video_file_clip:
+        with patch("backend.src.local_source.VideoFileClip") as mock_video_file_clip:
             # Mock VideoFileClip
             mock_clip = MagicMock()
             mock_clip.duration = 60.0

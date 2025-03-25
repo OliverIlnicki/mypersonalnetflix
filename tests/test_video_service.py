@@ -5,12 +5,7 @@ import tempfile
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock, mock_open
-
-# Add the backend directory to the path
-sys.path.append(str(Path(__file__).parent.parent / "backend"))
-
-# Import the video_service module
-from video_service import VideoService
+from backend.video_service import VideoService
 
 
 @pytest.fixture

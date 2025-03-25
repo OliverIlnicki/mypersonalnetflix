@@ -3,12 +3,28 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import sys
 from pathlib import Path
+from frontend.frontend_app import app, api_request, process_video_data
 
-# Add the frontend directory to the path
-sys.path.append(str(Path(__file__).parent.parent / "frontend"))
+# Fix module imports by adjusting path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
 
-from frontend_app import app, api_request, process_video_data
+# Mock templates before importing
+templates_mock = MagicMock()
+httpx_mock = MagicMock()
 
+# Path specifically for the module under test
+with patch.dict(sys.modules, {
+    'fastapi.templating': MagicMock(),
+    'httpx': MagicMock(),
+}):
+    sys.modules['fastapi.templating'].Jinja2Templates = MagicMock(return_value=templates_mock)
+    sys.modules['httpx'].AsyncClient = httpx_mock
+    
+    # Now import the module under test
+    from frontend.frontend_app import process_video_data
+    # We'll patch api_request and other functions as needed in the tests
 
 @pytest.fixture
 def mock_httpx_client():
@@ -22,25 +38,38 @@ def mock_httpx_client():
         # Setup the client's get method to return our mock response
         mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
         
-        yield mock_client
+        yield mock_client, mock_response
 
 
 @pytest.mark.asyncio
-async def test_api_request(mock_httpx_client):
-    """Test the api_request function"""
-    # Call the api_request function
-    result = await api_request("/api/videos", {"user": "test"})
+async def test_api_request():
+    """Test the api_request function with mocked dependencies"""
+    # Create mocks for httpx.AsyncClient
+    mock_client = AsyncMock()
+    mock_response = AsyncMock()
+    mock_response.json.return_value = {"data": "test"}
+    mock_response.raise_for_status = AsyncMock()
+    mock_client.__aenter__.return_value.get.return_value = mock_response
     
-    # Check that the httpx client was called correctly
-    mock_client = mock_httpx_client.return_value.__aenter__.return_value
-    mock_client.get.assert_called_once_with(
-        "http://localhost:8000/api/videos", 
-        params={"user": "test"}, 
-        timeout=10.0
-    )
-    
-    # Check the result
-    assert result == {"videos": []}
+    # Patch the API_URL and AsyncClient
+    with patch("frontend.frontend_app.API_URL", "http://localhost:8000"), \
+         patch("frontend.frontend_app.httpx.AsyncClient", return_value=mock_client):
+        
+        # Import the api_request function here after patching
+        from frontend.frontend_app import api_request
+        
+        # Call the function
+        result = await api_request("/api/test", {"param": "value"})
+        
+        # Check that the client was called correctly
+        mock_client.__aenter__.return_value.get.assert_called_once_with(
+            "http://localhost:8000/api/test",
+            params={"param": "value"},
+            timeout=10.0
+        )
+        
+        # Check the result
+        assert result == {"data": "test"}
 
 
 def test_process_video_data_single_video():
@@ -93,37 +122,60 @@ def test_process_video_data_empty_input():
 
 
 @pytest.mark.asyncio
-@patch("frontend_app.templates")
-@patch("frontend_app.api_request")
-async def test_home_route(mock_api_request, mock_templates):
+async def test_home_route():
     """Test the home route with mocked dependencies"""
-    # Mock the API response
-    mock_api_request.return_value = {
+    # Mock api_request
+    mock_api = AsyncMock()
+    mock_api.return_value = {
         "videos": [
             {"id": 1, "title": "Test Video", "image_url": "/data/test.jpg", "preview_url": "/data/test.gif"}
-        ]
+        ],
+        "users": ["TestUser"],
+        "years": [2023]
     }
     
-    # Create a mock request
-    mock_request = MagicMock()
+    # Mock templates
+    mock_templates = MagicMock()
     
-    # Call the home route
-    from frontend_app import home
-    await home(mock_request)
+    # Mock process_video_data
+    mock_process = MagicMock()
+    mock_process.return_value = [
+        {"id": 1, "title": "Test Video", "image_url": "/proxy/media?path=/data/test.jpg"}
+    ]
     
-    # Check that templates.TemplateResponse was called
-    mock_templates.TemplateResponse.assert_called_once()
-    # Check the template name
-    assert mock_templates.TemplateResponse.call_args[0][0] == "index.html"
+    # Patch the dependencies
+    with patch("frontend.frontend_app.api_request", mock_api), \
+         patch("frontend.frontend_app.templates", mock_templates), \
+         patch("frontend.frontend_app.process_video_data", mock_process):
+        
+        # Import the home function
+        from frontend.frontend_app import home
+        
+        # Create a mock request
+        mock_request = MagicMock()
+        
+        # Call the home route
+        await home(mock_request)
+        
+        # Check that templates.TemplateResponse was called
+        mock_templates.TemplateResponse.assert_called_once()
+        # Check the template name
+        assert mock_templates.TemplateResponse.call_args[0][0] == "index.html"
+        # Check that context has the right keys
+        context = mock_templates.TemplateResponse.call_args[0][1]
+        assert "request" in context
+        assert "videos" in context
+        assert "users" in context
+        assert "years" in context
+
 
 
 @pytest.mark.asyncio
-@patch("frontend_app.templates")
-@patch("frontend_app.api_request")
-async def test_watch_video_route(mock_api_request, mock_templates):
+async def test_watch_video_route():
     """Test the watch_video route with mocked dependencies"""
-    # Mock the API response
-    mock_api_request.return_value = {
+    # Mock api_request
+    mock_api = AsyncMock()
+    mock_api.return_value = {
         "video": {
             "id": 1, 
             "title": "Test Video", 
@@ -133,14 +185,33 @@ async def test_watch_video_route(mock_api_request, mock_templates):
         "related_videos": []
     }
     
-    # Create a mock request
-    mock_request = MagicMock()
+    # Mock templates
+    mock_templates = MagicMock()
     
-    # Call the watch_video route
-    from frontend_app import watch_video
-    await watch_video(mock_request, 1)
+    # Mock process_video_data
+    mock_process = MagicMock()
+    mock_process.side_effect = lambda x: x  # Just return the input
     
-    # Check that templates.TemplateResponse was called
-    mock_templates.TemplateResponse.assert_called_once()
-    # Check the template name
-    assert mock_templates.TemplateResponse.call_args[0][0] == "watch.html"
+    # Patch the dependencies
+    with patch("frontend.frontend_app.api_request", mock_api), \
+         patch("frontend.frontend_app.templates", mock_templates), \
+         patch("frontend.frontend_app.process_video_data", mock_process):
+        
+        # Import the watch_video function
+        from frontend.frontend_app import watch_video
+        
+        # Create a mock request
+        mock_request = MagicMock()
+        
+        # Call the watch_video route
+        await watch_video(mock_request, 1)
+        
+        # Check that templates.TemplateResponse was called
+        mock_templates.TemplateResponse.assert_called_once()
+        # Check the template name
+        assert mock_templates.TemplateResponse.call_args[0][0] == "watch.html"
+        # Check that context has the right keys
+        context = mock_templates.TemplateResponse.call_args[0][1]
+        assert "request" in context
+        assert "video" in context
+        assert "related_videos" in context

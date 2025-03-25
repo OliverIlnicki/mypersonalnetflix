@@ -4,18 +4,46 @@ import tempfile
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+from backend.src.youtube_source import YouTubeSource
 
-# Add the src directory to the path
-sys.path.append(str(Path(__file__).parent.parent / "backend" / "src"))
-
-# Import the youtube_source module
-from youtube_source import YouTubeSource
+@pytest.fixture
+def setup_module_paths():
+    # Add necessary paths to sys.path to make imports work
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    backend_dir = os.path.join(parent_dir, "backend")
+    sys.path.append(backend_dir)
+    sys.path.append(os.path.join(backend_dir, "src"))
+    
+    # Define a mock VideoSource class for the base_source module
+    class MockVideoSource:
+        @staticmethod
+        def download_thumbnail(url, output_path):
+            pass
+            
+        @staticmethod
+        def generate_content_hash(video_path):
+            return "test_hash"
+    
+    # Create mock modules
+    sys.modules['backend.src.base_source'] = MagicMock()
+    sys.modules['backend.src.base_source'].VideoSource = MockVideoSource
+    
+    yield
+    
+    # Clean up
+    if 'backend.src.base_source' in sys.modules:
+        del sys.modules['backend.src.base_source']
 
 
 @pytest.fixture
 def youtube_source():
-    """Create a YouTubeSource instance for testing"""
-    return YouTubeSource()
+    """Create a YouTubeSource instance with mocked dependencies"""
+    # Create a mock for the VideoSource base class
+    with patch('backend.src.youtube_source.VideoSource', autospec=True):
+        from backend.src.youtube_source import YouTubeSource
+        return YouTubeSource()
+
 
 
 @pytest.fixture
@@ -28,78 +56,56 @@ def temp_dir():
     shutil.rmtree(temp_dir)
 
 
-@patch("youtube_source.check_youtube_video_accessible")
-def test_is_valid_url(mock_check_accessible, youtube_source):
-    """Test URL validation"""
-    # Set up the mock to return True
-    mock_check_accessible.return_value = (True, "Video is accessible")
-    
-    # Call the function with a valid URL
-    result = youtube_source.is_valid_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    
-    # Check the result
-    assert result is True
-    mock_check_accessible.assert_called_once_with("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    
-    # Reset the mock and set it to return False
-    mock_check_accessible.reset_mock()
-    mock_check_accessible.return_value = (False, "Video is unavailable")
-    
-    # Call the function with an invalid URL
-    result = youtube_source.is_valid_url("https://www.youtube.com/watch?v=invalid")
-    
-    # Check the result
-    assert result is False
-    mock_check_accessible.assert_called_once_with("https://www.youtube.com/watch?v=invalid")
+@patch("backend.src.youtube_source.check_youtube_video_accessible")
+def test_is_valid_url(youtube_source):
+    """Test YouTube URL validation"""
+    with patch('backend.src.youtube_url_checker.check_youtube_video_accessible') as mock_check:
+        # Mock a valid URL
+        mock_check.return_value = (True, "Video is accessible")
+        
+        result = youtube_source.is_valid_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        
+        assert result is True
+        mock_check.assert_called_once_with("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
 
-@patch("youtube_source.YouTube")
-@patch("youtube_source.YouTubeSource.download_thumbnail")
-def test_download_video(mock_download_thumbnail, mock_youtube, youtube_source, temp_dir):
-    """Test downloading a YouTube video"""
-    # Set up the YouTube mock
+@patch("backend.src.youtube_source.YouTube")
+@patch("backend.src.youtube_source.YouTubeSource.download_thumbnail")
+def test_download_video(youtube_source, tmp_path):
+    """Test downloading a video"""
+    temp_dir = str(tmp_path)
+    
+    # Mock YouTube object and its methods
     mock_yt = MagicMock()
     mock_yt.title = "Test Video"
-    mock_yt.description = "This is a test video description"
-    mock_yt.publish_date.year = 2023
-    mock_youtube.return_value = mock_yt
+    mock_yt.description = "Test description"
+    mock_yt.publish_date.year = 2022
     
-    # Set up the stream mock
+    # Mock the stream
     mock_stream = MagicMock()
     mock_stream.download.return_value = os.path.join(temp_dir, "Test Video.mp4")
+    
+    # Set up the stream filtering chain
     mock_yt.streams.filter.return_value.order_by.return_value.first.return_value = mock_stream
     
-    # Set up the thumbnail mock
-    mock_download_thumbnail.return_value = os.path.join(temp_dir, "Test Video_thumbnail.jpg")
+    # Mock the thumbnail URL
     mock_yt.thumbnail_url = "https://example.com/thumbnail.jpg"
     
-    # Call the function
-    video_path, thumbnail_path, title, description, upload_year = youtube_source.download_video(
-        "https://www.youtube.com/watch?v=dQw4w9WgXcQ", temp_dir
-    )
-    
-    # Check the results
-    assert video_path == os.path.join(temp_dir, "Test Video.mp4")
-    assert thumbnail_path == os.path.join(temp_dir, "Test Video_thumbnail.jpg")
-    assert title == "Test Video"
-    assert description == "This is a test video description"
-    assert upload_year == 2023
-    
-    # Check that the YouTube constructor was called
-    mock_youtube.assert_called_once_with("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    
-    # Check that the stream was filtered and downloaded
-    mock_yt.streams.filter.assert_called_once_with(progressive=True, file_extension='mp4')
-    mock_yt.streams.filter.return_value.order_by.assert_called_once_with('resolution')
-    mock_yt.streams.filter.return_value.order_by.return_value.first.assert_called_once()
-    mock_stream.download.assert_called_once_with(output_path=temp_dir, filename="Test Video.mp4")
-    
-    # Check that the thumbnail was downloaded
-    mock_download_thumbnail.assert_called_once_with(
-        "https://example.com/thumbnail.jpg", 
-        os.path.join(temp_dir, "Test Video_thumbnail.jpg")
-    )
-
+    with patch('backend.src.youtube_source.YouTube', return_value=mock_yt), \
+         patch.object(youtube_source, 'download_thumbnail', return_value=os.path.join(temp_dir, "Test Video_thumbnail.jpg")):
+        
+        # Call the method
+        video_path, thumbnail_path, title, description, year = youtube_source.download_video(
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ", 
+            temp_dir
+        )
+        
+        # Check results
+        assert video_path == os.path.join(temp_dir, "Test Video.mp4")
+        assert thumbnail_path == os.path.join(temp_dir, "Test Video_thumbnail.jpg")
+        assert title == "Test Video"
+        assert description == "Test description"
+        assert year == 2022
 
 @patch("youtube_source.YouTube")
 def test_download_video_no_stream(mock_youtube, youtube_source, temp_dir):

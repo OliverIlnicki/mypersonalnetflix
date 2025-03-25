@@ -4,12 +4,7 @@ import sqlite3
 import tempfile
 import sys
 from pathlib import Path
-
-# Add the src directory to the path
-sys.path.append(str(Path(__file__).parent.parent / "backend" / "src"))
-
-# Import the db_helper module
-from db_helper import DatabaseHelper
+from backend.src.db_helper import DatabaseHelper
 
 
 @pytest.fixture

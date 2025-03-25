@@ -104,7 +104,7 @@ The Video Preview Application is designed as a modular, two-tier system comprise
 
 - Python 3.10 or higher
 - FFmpeg (for video processing)
-- pip or alternative Python package manager
+- UV - a modern Python packaging tool
 
 ### Setup
 
@@ -114,9 +114,14 @@ The Video Preview Application is designed as a modular, two-tier system comprise
    cd video-preview-app
    ```
 
-2. Install dependencies:
+2. Create a virtual environment and install dependencies using UV:
    ```
-   pip install -r requirements.txt
+   # Install UV if you don't have it already
+   pip install uv
+
+   # Create a virtual environment and install dependencies
+   uv venv
+   uv pip install -r requirements.txt
    ```
 
 3. Configure the application (optional):
@@ -130,7 +135,7 @@ The Video Preview Application is designed as a modular, two-tier system comprise
 Start both frontend and backend servers with default settings:
 
 ```
-python main.py
+uv run main.py
 ```
 
 Then open your browser to `http://localhost:8001` to access the application.
@@ -139,17 +144,17 @@ Then open your browser to `http://localhost:8001` to access the application.
 
 **Run only the backend:**
 ```
-python main.py --backend-only --backend-port 9000
+uv run main.py --backend-only --backend-port 9000
 ```
 
 **Run only the frontend, connecting to a specific API:**
 ```
-python main.py --frontend-only --frontend-port 3000 --api-url http://api.example.com
+uv run main.py --frontend-only --frontend-port 3000 --api-url http://api.example.com
 ```
 
 **Use a different data directory:**
 ```
-python main.py --data-dir /path/to/data
+uv run main.py --data-dir /path/to/data
 ```
 
 ### Adding Videos
@@ -158,13 +163,13 @@ Videos can be added to the system using the command-line tool:
 
 ```
 # Add a YouTube video
-python backend/videos2db.py --url "https://www.youtube.com/watch?v=xxxx" --user username
+uv run backend/videos2db.py --url "https://www.youtube.com/watch?v=xxxx" --user username
 
 # Process all videos in a local directory
-python backend/videos2db.py --local-dir /path/to/videos --user username
+uv run backend/videos2db.py --local-dir /path/to/videos --user username
 
 # Process videos from a text file with URLs/paths (one per line)
-python backend/videos2db.py linkliste.txt --user username
+uv run backend/videos2db.py linkliste.txt --user username
 ```
 
 ## Configuration
@@ -257,7 +262,7 @@ The application is designed to be extensible in several ways:
 ### Running Tests
 
 ```
-pytest tests/
+uv run -m pytest tests/
 ```
 
 ## License

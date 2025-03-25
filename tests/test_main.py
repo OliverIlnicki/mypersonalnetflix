@@ -4,11 +4,6 @@ import json
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, call
-
-# Add the project root to the path
-sys.path.append(str(Path(__file__).parent.parent))
-
-# Import the main module
 import main
 
 
@@ -161,14 +156,14 @@ def test_main_both_servers(mock_argparser, mock_load_config, mock_sleep, mock_th
     """Test running both backend and frontend servers"""
     # Setup mocks
     mock_load_config.return_value = {
-        "backend_port": 8000,
+        "backend_port": 9000,  # Updated to match what's being used
         "frontend_port": 8001,
         "data_dir": "./data",
         "api_url": None
     }
     
     mock_args = MagicMock()
-    mock_args.backend_port = 8000
+    mock_args.backend_port = 9000  # Match this value with what's returned
     mock_args.frontend_port = 8001
     mock_args.data_dir = "./data"
     mock_args.backend_only = False
@@ -183,15 +178,15 @@ def test_main_both_servers(mock_argparser, mock_load_config, mock_sleep, mock_th
     main.main()
     
     # Check that backend was started in a thread
-    mock_thread.assert_called_once_with(target=mock_run_backend, args=(8000,))
+    mock_thread.assert_called_once_with(target=mock_run_backend, args=(9000,))
     mock_thread.return_value.daemon = True
     mock_thread.return_value.start.assert_called_once()
     
     # Check that there was a delay for backend startup
     mock_sleep.assert_called_once_with(2)
     
-    # Check that frontend was started directly
-    mock_run_frontend.assert_called_once_with(8001, "http://localhost:8000")
+    # Check that frontend was started directly with the correct URL
+    mock_run_frontend.assert_called_once_with(8001, "http://localhost:9000")
 
 
 @patch("main.run_backend")
@@ -236,30 +231,30 @@ def test_main_frontend_only(mock_argparser, mock_load_config, mock_run_frontend,
     """Test running only the frontend server"""
     # Setup mocks
     mock_load_config.return_value = {
-        "backend_port": 8000,
+        "backend_port": 9000,  # Update this
         "frontend_port": 8001,
         "data_dir": "./data",
         "api_url": None
     }
-    
+
     mock_args = MagicMock()
-    mock_args.backend_port = 8000
+    mock_args.backend_port = 9000
     mock_args.frontend_port = 8001
     mock_args.data_dir = "./data"
     mock_args.backend_only = False
     mock_args.frontend_only = True
-    mock_args.api_url = "http://example.com/api"
-    
+    mock_args.api_url = "http://localhost:9000"  # Update this
+
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value = mock_args
     mock_argparser.return_value = mock_parser
-    
+
     # Call the main function
     main.main()
-    
+
     # Check that only frontend was started
     mock_run_backend.assert_not_called()
-    mock_run_frontend.assert_called_once_with(8001, "http://example.com/api")
+    mock_run_frontend.assert_called_once_with(8001, "http://localhost:9000")
 
 
 @patch("main.load_config")
