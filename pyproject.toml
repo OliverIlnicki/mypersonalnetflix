@@ -1,7 +1,8 @@
 [project]
 name = "mypersonalnetflix"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "A tool to present your videos with a GUI like Netflix
+This is a demo project, to test multiple workflow adjustments, integrating automated documentation and deployment via heroku."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
