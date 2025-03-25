@@ -25,7 +25,7 @@ This application provides a platform to create and view thumbnails and preview c
 
 The application uses a modular, two-tier architecture:
 
-![Application Architecture](docs/architecture.png)
+![Application Architecture](docs/architecture.svg)
 
 ### System Architecture
 
