@@ -20,3 +20,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+data/OliverIlnicki
+.venv/
+.pytest_cache/
+backend/linkliste.txt
+data/videos.db
+Procfile
