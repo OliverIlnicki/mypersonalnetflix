@@ -3,8 +3,7 @@ import pytest
 import sys
 import os
 
-# First fix the setup for youtube_url_checker tests
-
+# Fixtures for common test setup
 @pytest.fixture
 def setup_youtube_checker():
     # Create necessary mocks for imports
@@ -51,8 +50,6 @@ def test_check_youtube_video_private(mock_youtube, mock_head, setup_youtube_chec
     
     # Check the result
     assert accessible is False
-    # The message should match what's actually returned by the check_youtube_video_accessible function
-    # Based on the error, it seems the function actually returns "Video is private"
     assert "private" in message.lower()  # More flexible assertion
 
 @patch("backend.src.youtube_url_checker.requests.head")
@@ -67,19 +64,16 @@ def test_check_youtube_video_age_restricted(mock_youtube, mock_head, setup_youtu
     # Import locally with patched modules
     from backend.src.youtube_url_checker import check_youtube_video_accessible
     
-    # Create a property that raises an exception
-    def title_getter(self):
-        raise Exception("age restricted")
-    
     # Mock the YouTube object
     mock_yt = MagicMock()
-    mock_yt.check_availability = MagicMock()
-
-    # Set up the property using the correct approach
-    mock_yt.__class__ = type('MockYouTube', (object,), {
-        'title': property(lambda self: title_getter(self))
-    })
     mock_youtube.return_value = mock_yt
+    
+    # Set up the property to raise an exception with a specific message
+    def raise_age_restricted(*args, **kwargs):
+        raise Exception("age restricted")
+    
+    # Configure mock to raise age restriction error on title access
+    type(mock_yt).title = property(lambda self: raise_age_restricted())
     
     # Call the function
     accessible, message = check_youtube_video_accessible("https://www.youtube.com/watch?v=dQw4w9WgXcQ")

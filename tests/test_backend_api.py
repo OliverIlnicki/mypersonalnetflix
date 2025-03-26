@@ -19,6 +19,7 @@ def mock_video_service():
     with patch("backend.backend_api.video_service") as mock_service:
         yield mock_service
 
+
 def test_get_videos(client, mock_video_service):
     """Test the /api/videos endpoint"""
     # Setup mock return value
@@ -145,10 +146,10 @@ def test_get_years(client, mock_video_service):
 
 def test_get_featured(client, mock_video_service):
     """Test the /api/featured endpoint"""
-    # Setup mock return value - update to match what's expected
+    # Setup mock return value
     mock_video_service.get_random_featured_video.return_value = {
         "id": 1,
-        "title": "Nakitofu Video",  # Changed to match expected value
+        "title": "Featured Video",
         "user": "TestUser"
     }
 
@@ -159,7 +160,7 @@ def test_get_featured(client, mock_video_service):
     assert response.status_code == 200
     data = response.json()
     assert "featured_video" in data
-    assert data["featured_video"]["title"] == "Nakitofu Video"  # Updated assertion
+    assert data["featured_video"]["title"] == "Featured Video"
 
 
 def test_get_featured_no_videos(client, mock_video_service):
