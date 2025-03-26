@@ -11,21 +11,24 @@ A full-stack web application for generating, managing, and viewing video preview
 This application provides a platform to create and view thumbnails and preview clips from videos. It consists of:
 
 - **Backend**: A FastAPI API server that handles video processing, database management, and serving preview data
-- **Frontend**: A web interface for browsing and viewing the video previews
+- **Frontend**: A web interface for browsing and viewing the video previews. Frontend received its own API, to allow total replacement of frontend by other technologies.
 
 ## Features
 
 - Support for both local video files and YouTube videos
 - Automatic generation of thumbnails and preview clips
-- Preview storage and management in a SQLite database
+- Preview, user and filter management in a SQLite database
 - Responsive web interface for browsing the video collection
-- GIF and MP4 preview generation for quick previews
+- GIF and MP4 preview generation with ffmpeg for quick previews
 
-## Long-term Considerations for Heroku Deployment
+## Long-term Considerations for possible Updates
 
 - Database: Replace SQLite with PostgreSQL
-- File Storage: Replace local file storage with Amazon S3 or similar and add video solution for full res local videos
+- File Storage: Replace local file storage with Amazon S3 or similar and add video solution for full Res local videos
 - Environment Variables: Configure sensitive information as Heroku config vars
+- Improvments in CI/CD Pipeline, Adding of MlOps
+- Scalability of methods, Authentication & Security
+- Apply AI-Analytics features on media
 
 ## Architecture
 
