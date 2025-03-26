@@ -2,7 +2,7 @@
 
 A full-stack web application for generating, managing, and viewing video previews from both local files and YouTube sources.
 
-**Live Demo:** [https://mypersonalnetflix-52bd709f2d61.herokuapp.com/](https://mypersonalnetflix-52bd709f2d61.herokuapp.com/)
+**Live Demo:** [https://oliflix-5b6d7a3b9c18.herokuapp.com//](https://oliflix-5b6d7a3b9c18.herokuapp.com/)
 
 ![Homepage Screenshot](docs/homepage.png)
 
