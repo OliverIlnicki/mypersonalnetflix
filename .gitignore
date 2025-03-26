@@ -15,3 +15,8 @@ data/testdata/wuerfel - Kopie.mp4:Zone.Identifier
 data/testdata/wuerfel - Kopie.txt:Zone.Identifier
 data/testdata/wuerfel.txt.bak
 tests/test-local-source.py:Zone.Identifier
+# Ignore entire directories
+__pycache__/
+backend/__pycache__/
+frontend/__pycache__/
+tests/__pycache__/
