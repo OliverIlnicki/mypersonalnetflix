@@ -1,6 +1,6 @@
 # Video Preview Application
 
-A full-stack web application for generating, managing, and viewing video previews from both local files and YouTube sources.
+A full-stack web application for generating, managing, and viewing video previews from both local files and YouTube sources. This app was developed to allow media creators to show off their work in a well-known design-format.
 
 **Live Demo:** [https://oliflix-5b6d7a3b9c18.herokuapp.com//](https://oliflix-5b6d7a3b9c18.herokuapp.com/)
 
