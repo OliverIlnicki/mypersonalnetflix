@@ -23,9 +23,9 @@ This application provides a platform to create and view thumbnails and preview c
 
 ## Long-term Considerations for Heroku Deployment
 
-Database: Replace SQLite with PostgreSQL
-File Storage: Replace local file storage with Amazon S3 or similar and add video solution for full res local videos
-Environment Variables: Configure sensitive information as Heroku config vars
+- Database: Replace SQLite with PostgreSQL
+- File Storage: Replace local file storage with Amazon S3 or similar and add video solution for full res local videos
+- Environment Variables: Configure sensitive information as Heroku config vars
 
 ## Architecture
 
